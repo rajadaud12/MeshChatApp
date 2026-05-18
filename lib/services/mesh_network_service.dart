@@ -59,8 +59,17 @@ class MeshNetworkService extends ChangeNotifier {
 
   Future<void> _initNetwork() async {
     await requestPermissions();
-    await _getCurrentLocation();
+    
+    // Stop any lingering previous session first
+    await Nearby().stopAdvertising();
+    await Nearby().stopDiscovery();
+    await Nearby().stopAllEndpoints();
+
+    // Start mesh immediately, don't wait for GPS which might hang indoors
     startMesh();
+    
+    // Fetch location in background
+    _getCurrentLocation();
     
     // Periodically broadcast location
     _locationTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
