@@ -207,21 +207,15 @@ class MeshNetworkService extends ChangeNotifier {
         notifyListeners();
         _forwardRawMessage(rawData, excludeId: fromId);
       } else if (type == 'DIRECT') {
-        final targetId = data['targetId'];
-        final senderId = data['senderId'];
-        if (targetId == userId) {
-          final chat = ChatMessage(
-            senderId: senderId,
-            senderName: data['senderName'],
-            text: data['text'],
-            isDirect: true,
-          );
-          directMessages.putIfAbsent(senderId, () => []).add(chat);
-          notifyListeners();
-        } else {
-          // Relay direct message
-          _forwardRawMessage(rawData, excludeId: fromId);
-        }
+        // Direct messages are 1-hop, so `fromId` is the sender.
+        final chat = ChatMessage(
+          senderId: fromId,
+          senderName: data['senderName'],
+          text: data['text'],
+          isDirect: true,
+        );
+        directMessages.putIfAbsent(fromId, () => []).add(chat);
+        notifyListeners();
       } else if (type == 'VOICE') {
         // Voice payload encoded as base64 string
         final targetId = data['targetId'];
@@ -278,12 +272,10 @@ class MeshNetworkService extends ChangeNotifier {
     final payload = jsonEncode({
       'msgId': '${userId}_${DateTime.now().millisecondsSinceEpoch}',
       'type': 'DIRECT',
-      'senderId': userId,
       'senderName': userName,
-      'targetId': targetId,
       'text': text,
     });
-    _forwardRawMessage(payload);
+    Nearby().sendBytesPayload(targetId, Uint8List.fromList(utf8.encode(payload)));
   }
 
   void sendVoiceData(Uint8List audioBytes) {
